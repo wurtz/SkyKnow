@@ -4,13 +4,15 @@
 
 Know when it'll rain or snow—and how long it'll last.
 
-```
-            @....@
-           (------)
-          (  ^vv^  )
-         (   ~~~~   )
-          ^^  ~~  ^^
-```
+<div align="center">
+<pre>
+     @....@
+    (------)
+   (  ^vv^  )
+  (   ~~~~   )
+   ^^  ~~  ^^
+</pre>
+</div>
 
 ---
 
