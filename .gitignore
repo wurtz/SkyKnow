@@ -1,0 +1,16 @@
+# Claude Code internal files
+.claude/
+
+# OS/Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+nul
+
+# Test outputs
+*.webp
+*.gif
+test_*.webp
+test_*.gif
