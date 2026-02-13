@@ -4,6 +4,14 @@
 
 Know when it'll rain or snow—and how long it'll last.
 
+```
+     @....@
+    (------)
+   (  ^vv^  )
+  (   ~~~~   )
+   ^^  ~~  ^^
+```
+
 ---
 
 ## Features
