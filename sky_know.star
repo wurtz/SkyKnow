@@ -1,10 +1,15 @@
-load("render.star", "render")
-load("schema.star", "schema")
-load("http.star", "http")
-load("time.star", "time")
 load("cache.star", "cache")
 load("encoding/json.star", "json")
-load("encoding/base64.star", "base64")
+load("http.star", "http")
+load("images/icon_rain_heavy.png", ICON_RAIN_HEAVY_ASSET = "file")
+load("images/icon_rain_light.png", ICON_RAIN_LIGHT_ASSET = "file")
+load("images/icon_rain_medium.png", ICON_RAIN_MEDIUM_ASSET = "file")
+load("images/icon_snow_heavy.png", ICON_SNOW_HEAVY_ASSET = "file")
+load("images/icon_snow_light.png", ICON_SNOW_LIGHT_ASSET = "file")
+load("images/icon_snow_medium.png", ICON_SNOW_MEDIUM_ASSET = "file")
+load("render.star", "render")
+load("schema.star", "schema")
+load("time.star", "time")
 
 # WMO weather codes by precipitation type
 SNOW_CODES = [71, 73, 75, 77, 85, 86]
@@ -16,8 +21,8 @@ DIM_GRAY = "#666666"
 ERROR_RED = "#FF4444"
 
 # Severity colors: light → moderate → heavy
-SEVERITY_SNOW = ["#4488FF", "#FFAA00", "#FF4444"]   # blue, amber, red
-SEVERITY_RAIN = ["#44AAFF", "#FFAA00", "#FF6633"]   # cyan, amber, orange-red
+SEVERITY_SNOW = ["#4488FF", "#FFAA00", "#FF4444"]  # blue, amber, red
+SEVERITY_RAIN = ["#44AAFF", "#FFAA00", "#FF6633"]  # cyan, amber, orange-red
 
 # Supporting text gray by severity (Lines 2-3)
 GRAY_BY_SEVERITY = ["#777777", "#888888", "#999999"]  # light, moderate, heavy
@@ -25,8 +30,8 @@ GRAY_BY_SEVERITY = ["#777777", "#888888", "#999999"]  # light, moderate, heavy
 CACHE_TTL = 1800  # 30 minutes
 
 # Animation settings
-ANIM_FRAMES = 32   # frames per event (~3.2s at 100ms delay)
-ANIM_DELAY = 100   # ms per frame
+ANIM_FRAMES = 32  # frames per event (~3.2s at 100ms delay)
+ANIM_DELAY = 100  # ms per frame
 
 # Particle colors (dim so they don't compete with text)
 PARTICLE_SNOW = "#334466"
@@ -34,17 +39,35 @@ PARTICLE_RAIN = "#334455"
 
 # Particle data: (x, y, speed, phase) - phase for sine wave offset
 SNOW_PARTICLES = [
-    (5, 2, 0.5, 0), (15, 22, 0.6, 2), (28, 8, 0.4, 1),
-    (42, 28, 0.7, 3), (55, 14, 0.5, 4), (10, 18, 0.6, 5),
-    (35, 5, 0.4, 2), (50, 25, 0.8, 1), (20, 12, 0.5, 3),
-    (60, 20, 0.6, 0), (8, 28, 0.7, 4), (48, 10, 0.5, 2),
+    (5, 2, 0.5, 0),
+    (15, 22, 0.6, 2),
+    (28, 8, 0.4, 1),
+    (42, 28, 0.7, 3),
+    (55, 14, 0.5, 4),
+    (10, 18, 0.6, 5),
+    (35, 5, 0.4, 2),
+    (50, 25, 0.8, 1),
+    (20, 12, 0.5, 3),
+    (60, 20, 0.6, 0),
+    (8, 28, 0.7, 4),
+    (48, 10, 0.5, 2),
 ]
 RAIN_PARTICLES = [
-    (3, 1, 1.5, 0), (12, 9, 1.8, 0), (22, 17, 1.4, 0),
-    (30, 5, 2.0, 0), (38, 25, 1.6, 0), (46, 13, 1.9, 0),
-    (54, 21, 1.5, 0), (8, 29, 1.7, 0), (18, 7, 2.0, 0),
-    (33, 15, 1.8, 0), (48, 3, 1.4, 0), (58, 23, 1.6, 0),
-    (26, 11, 1.9, 0), (41, 19, 1.5, 0), (10, 25, 1.7, 0),
+    (3, 1, 1.5, 0),
+    (12, 9, 1.8, 0),
+    (22, 17, 1.4, 0),
+    (30, 5, 2.0, 0),
+    (38, 25, 1.6, 0),
+    (46, 13, 1.9, 0),
+    (54, 21, 1.5, 0),
+    (8, 29, 1.7, 0),
+    (18, 7, 2.0, 0),
+    (33, 15, 1.8, 0),
+    (48, 3, 1.4, 0),
+    (58, 23, 1.6, 0),
+    (26, 11, 1.9, 0),
+    (41, 19, 1.5, 0),
+    (10, 25, 1.7, 0),
     (52, 8, 2.0, 0),
 ]
 
@@ -57,19 +80,13 @@ INTERVAL_OPTIONS = {
     "168": 7,
 }
 
-# ─── Pixel art icons (8x8 base64-encoded PNGs) ───
-
-ICON_SNOW_LIGHT = """iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAGklEQVR4nGNgQAL/gYABF/iPBPAqwik5mAEA2w4T7X2e/9EAAAAASUVORK5CYII="""
-
-ICON_SNOW_MEDIUM = """iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJklEQVR4nGNgQAL/gYABF/iPBPAqwimJF6DrROGj243VLXhNIAQAAqw7xYlDpPsAAAAASUVORK5CYII="""
-
-ICON_SNOW_HEAVY = """iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAKklEQVR4nGNggIJp06b9R8YMyABdEkURLkmsJuEE/4GAEBu7AC5BkhQCAMFiUXPU/Pu7AAAAAElFTkSuQmCC"""
-
-ICON_RAIN_LIGHT = """iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAIklEQVR4nGNgQAIpq/7/Z8AFQJIuHf//41REUAFBKwYQAACc3Bfd0qQO/gAAAABJRU5ErkJggg=="""
-
-ICON_RAIN_MEDIUM = """iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJUlEQVR4nGNgQAIuHf//M+ACIEkYxqmIaIBiCrqRGFZRz15cAABYzx6vpJUFKQAAAABJRU5ErkJggg=="""
-
-ICON_RAIN_HEAVY = """iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAKUlEQVR4nGNggIJp06b9R8YMyABdEkURLkmsJuEELh3//2OjiVdAkSkApxZTC1LzE2gAAAAASUVORK5CYII="""
+# ─── Pixel art icons (8x8 PNGs) ───
+ICON_SNOW_LIGHT = ICON_SNOW_LIGHT_ASSET.readall()
+ICON_SNOW_MEDIUM = ICON_SNOW_MEDIUM_ASSET.readall()
+ICON_SNOW_HEAVY = ICON_SNOW_HEAVY_ASSET.readall()
+ICON_RAIN_LIGHT = ICON_RAIN_LIGHT_ASSET.readall()
+ICON_RAIN_MEDIUM = ICON_RAIN_MEDIUM_ASSET.readall()
+ICON_RAIN_HEAVY = ICON_RAIN_HEAVY_ASSET.readall()
 
 # ─── Frog sprite (13x11 pixels) for All Clear screen ───
 
@@ -126,7 +143,6 @@ FROG_PUFF = [
     "0TT00DDD00TT0",
 ]
 
-
 def main(config):
     # Test mode: inject fake data for development/testing
     test_mode = config.get("test_mode")
@@ -147,8 +163,9 @@ def main(config):
         return render_no_location()
 
     # Parse forecast interval
-    interval_hours = int(config.get("interval", "48"))
-    forecast_days = INTERVAL_OPTIONS.get(str(interval_hours), 2)
+    interval_str = config.get("interval", "48")
+    interval_hours = int(interval_str)
+    forecast_days = INTERVAL_OPTIONS.get(interval_str, 2)
 
     forecast = get_forecast(lat, lng, tz, forecast_days)
     if not forecast:
@@ -160,7 +177,6 @@ def main(config):
         return render_no_precip(interval_hours)
 
     return render_events(events)
-
 
 # ─── Test mode ───
 
@@ -196,7 +212,8 @@ def handle_test_mode(mode):
         return render_no_precip(48)
     elif mode == "error":
         return render_error()
-    # Legacy test modes (backwards compatibility)
+        # Legacy test modes (backwards compatibility)
+
     elif mode == "snow":
         forecast = fake_snow_moderate()
         events = parse_precip_events(forecast, 48)
@@ -210,7 +227,6 @@ def handle_test_mode(mode):
         return render_no_precip(48)
     return render_events(events)
 
-
 def fake_snow_light():
     """Light snow - 6h away, dusting, 40%"""
     return {
@@ -223,15 +239,17 @@ def fake_snow_light():
         },
     }
 
-
 def fake_snow_moderate():
     """Moderate snow - tomorrow, 3-6", 85%"""
     return {
         "hourly": {
             "time": [
-                "2026-02-14T14:00", "2026-02-14T15:00",
-                "2026-02-14T16:00", "2026-02-14T17:00",
-                "2026-02-14T18:00", "2026-02-14T19:00",
+                "2026-02-14T14:00",
+                "2026-02-14T15:00",
+                "2026-02-14T16:00",
+                "2026-02-14T17:00",
+                "2026-02-14T18:00",
+                "2026-02-14T19:00",
             ],
             "snowfall": [0.8, 1.2, 1.5, 0.9, 0.6, 0.3],
             "rain": [0, 0, 0, 0, 0, 0],
@@ -240,15 +258,20 @@ def fake_snow_moderate():
         },
     }
 
-
 def fake_snow_heavy():
     """Heavy snow - 12h away, 12"+, 95%"""
     return {
         "hourly": {
             "time": [
-                "2026-02-14T02:00", "2026-02-14T03:00", "2026-02-14T04:00",
-                "2026-02-14T05:00", "2026-02-14T06:00", "2026-02-14T07:00",
-                "2026-02-14T08:00", "2026-02-14T09:00", "2026-02-14T10:00",
+                "2026-02-14T02:00",
+                "2026-02-14T03:00",
+                "2026-02-14T04:00",
+                "2026-02-14T05:00",
+                "2026-02-14T06:00",
+                "2026-02-14T07:00",
+                "2026-02-14T08:00",
+                "2026-02-14T09:00",
+                "2026-02-14T10:00",
             ],
             "snowfall": [1.5, 2.0, 2.5, 2.0, 1.8, 1.5, 1.2, 1.0, 0.8],
             "rain": [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -257,15 +280,19 @@ def fake_snow_heavy():
         },
     }
 
-
 def fake_snow_now():
     """Snow happening now - ends at 8pm, 6-12", 100%"""
     return {
         "hourly": {
             "time": [
-                "2026-02-13T13:00", "2026-02-13T14:00", "2026-02-13T15:00",
-                "2026-02-13T16:00", "2026-02-13T17:00", "2026-02-13T18:00",
-                "2026-02-13T19:00", "2026-02-13T20:00",
+                "2026-02-13T13:00",
+                "2026-02-13T14:00",
+                "2026-02-13T15:00",
+                "2026-02-13T16:00",
+                "2026-02-13T17:00",
+                "2026-02-13T18:00",
+                "2026-02-13T19:00",
+                "2026-02-13T20:00",
             ],
             "snowfall": [1.2, 1.5, 1.8, 1.5, 1.2, 0.9, 0.6, 0.3],
             "rain": [0, 0, 0, 0, 0, 0, 0, 0],
@@ -273,7 +300,6 @@ def fake_snow_now():
             "weathercode": [75, 75, 75, 75, 73, 73, 71, 71],
         },
     }
-
 
 def fake_rain_light():
     """Light rain - 2d away, light, 25%"""
@@ -287,14 +313,15 @@ def fake_rain_light():
         },
     }
 
-
 def fake_rain_moderate():
     """Moderate rain - 18h away (tomorrow), moderate, 70%"""
     return {
         "hourly": {
             "time": [
-                "2026-02-14T08:00", "2026-02-14T09:00",
-                "2026-02-14T10:00", "2026-02-14T11:00",
+                "2026-02-14T08:00",
+                "2026-02-14T09:00",
+                "2026-02-14T10:00",
+                "2026-02-14T11:00",
                 "2026-02-14T12:00",
             ],
             "snowfall": [0, 0, 0, 0, 0],
@@ -304,14 +331,17 @@ def fake_rain_moderate():
         },
     }
 
-
 def fake_rain_heavy():
     """Heavy rain - 4h away (today), heavy, 90%"""
     return {
         "hourly": {
             "time": [
-                "2026-02-13T18:00", "2026-02-13T19:00", "2026-02-13T20:00",
-                "2026-02-13T21:00", "2026-02-13T22:00", "2026-02-13T23:00",
+                "2026-02-13T18:00",
+                "2026-02-13T19:00",
+                "2026-02-13T20:00",
+                "2026-02-13T21:00",
+                "2026-02-13T22:00",
+                "2026-02-13T23:00",
             ],
             "snowfall": [0, 0, 0, 0, 0, 0],
             "rain": [0.8, 1.2, 1.5, 1.0, 0.8, 0.5],
@@ -320,14 +350,16 @@ def fake_rain_heavy():
         },
     }
 
-
 def fake_rain_now():
     """Rain happening now - ends at 3pm, heavy, 100%"""
     return {
         "hourly": {
             "time": [
-                "2026-02-13T11:00", "2026-02-13T12:00", "2026-02-13T13:00",
-                "2026-02-13T14:00", "2026-02-13T15:00",
+                "2026-02-13T11:00",
+                "2026-02-13T12:00",
+                "2026-02-13T13:00",
+                "2026-02-13T14:00",
+                "2026-02-13T15:00",
             ],
             "snowfall": [0, 0, 0, 0, 0],
             "rain": [1.0, 1.2, 1.0, 0.8, 0.5],
@@ -336,21 +368,28 @@ def fake_rain_now():
         },
     }
 
-
 def fake_mixed_forecast():
     return {
         "hourly": {
             "time": [
-                "2026-02-13T08:00", "2026-02-13T09:00",
-                "2026-02-13T10:00", "2026-02-13T11:00",
-                "2026-02-13T12:00", "2026-02-13T13:00",
-                "2026-02-13T14:00", "2026-02-13T15:00",
+                "2026-02-13T08:00",
+                "2026-02-13T09:00",
+                "2026-02-13T10:00",
+                "2026-02-13T11:00",
+                "2026-02-13T12:00",
+                "2026-02-13T13:00",
+                "2026-02-13T14:00",
+                "2026-02-13T15:00",
                 "2026-02-13T16:00",
                 # gap then snow the next day
-                "2026-02-14T02:00", "2026-02-14T03:00",
-                "2026-02-14T04:00", "2026-02-14T05:00",
-                "2026-02-14T06:00", "2026-02-14T07:00",
-                "2026-02-14T08:00", "2026-02-14T09:00",
+                "2026-02-14T02:00",
+                "2026-02-14T03:00",
+                "2026-02-14T04:00",
+                "2026-02-14T05:00",
+                "2026-02-14T06:00",
+                "2026-02-14T07:00",
+                "2026-02-14T08:00",
+                "2026-02-14T09:00",
                 "2026-02-14T10:00",
             ],
             "snowfall": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 1.5, 2.0, 1.2, 0.5, 0.3, 0.1, 0, 0],
@@ -359,7 +398,6 @@ def fake_mixed_forecast():
             "weathercode": [61, 63, 65, 65, 63, 61, 51, 0, 0, 73, 75, 75, 73, 71, 71, 71, 0, 0],
         },
     }
-
 
 # ─── API ───
 
@@ -370,12 +408,12 @@ def get_forecast(lat, lng, tz, forecast_days):
         return json.decode(cached)
 
     url = (
-        "https://api.open-meteo.com/v1/forecast"
-        + "?latitude=%s&longitude=%s" % (lat, lng)
-        + "&hourly=snowfall,rain,precipitation_probability,weathercode"
-        + "&temperature_unit=fahrenheit"
-        + "&timezone=%s" % tz
-        + "&forecast_days=%d" % forecast_days
+        "https://api.open-meteo.com/v1/forecast" +
+        "?latitude=%s&longitude=%s" % (lat, lng) +
+        "&hourly=snowfall,rain,precipitation_probability,weathercode" +
+        "&temperature_unit=fahrenheit" +
+        "&timezone=%s" % tz +
+        "&forecast_days=%d" % forecast_days
     )
 
     resp = http.get(url)
@@ -385,7 +423,6 @@ def get_forecast(lat, lng, tz, forecast_days):
     data = resp.json()
     cache.set(cache_key, json.encode(data), ttl_seconds = CACHE_TTL)
     return data
-
 
 # ─── Event parsing ───
 
@@ -438,7 +475,6 @@ def parse_precip_events(forecast, hours_limit):
     events.append(current)
     return events
 
-
 def classify_hour(code, snowfall, rain):
     """Classify an hour as snow, rain, or None."""
     if code in SNOW_CODES or snowfall > 0:
@@ -446,7 +482,6 @@ def classify_hour(code, snowfall, rain):
     if code in RAIN_CODES or rain > 0:
         return "rain"
     return None
-
 
 def new_event(hour):
     return {
@@ -458,14 +493,12 @@ def new_event(hour):
         "total_rain": hour["rain"],
     }
 
-
 def extend_event(event, hour):
     event["end"] = hour["time"]
     event["total_snow"] += hour["snowfall"]
     event["total_rain"] += hour["rain"]
     if hour["probability"] > event["max_prob"]:
         event["max_prob"] = hour["probability"]
-
 
 def hours_between(time_a, time_b):
     """Estimate hour gap between two ISO time strings."""
@@ -479,7 +512,6 @@ def hours_between(time_a, time_b):
 
     # Different days — approximate
     return (24 - ha) + hb
-
 
 # ─── Rendering ───
 
@@ -495,7 +527,6 @@ def render_events(events):
             children = frames,
         ),
     )
-
 
 def render_event_frames(event):
     """Generate animated frames for a single event with falling particles."""
@@ -517,7 +548,6 @@ def render_event_frames(event):
             ),
         )
     return frames
-
 
 def render_particles(particles, color, frame, precip_type):
     """Render a single frame of falling particles with variable speeds."""
@@ -558,7 +588,6 @@ def render_particles(particles, color, frame, precip_type):
 
     return render.Stack(children = children)
 
-
 def render_event_text(event):
     """Render the static text overlay for an event (3-line hero countdown layout)."""
     precip_type = event["type"]
@@ -583,7 +612,7 @@ def render_event_text(event):
                 main_align = "center",
                 cross_align = "center",
                 children = [
-                    render.Image(src = base64.decode(icon), width = 8, height = 8),
+                    render.Image(src = icon, width = 8, height = 8),
                     render.Box(width = 2, height = 1),
                     render.Text("%s %s" % (label, duration), color = header_color, font = "tom-thumb"),
                 ],
@@ -607,7 +636,6 @@ def render_event_text(event):
         ],
     )
 
-
 def render_frog_sprite(sprite_data):
     """Render a single frog sprite frame from string data."""
     children = []
@@ -624,7 +652,6 @@ def render_frog_sprite(sprite_data):
                     ),
                 )
     return render.Stack(children = children)
-
 
 def render_frog_animation():
     """Generate animated frog frames (idle → blink → idle → puff → idle)."""
@@ -651,7 +678,6 @@ def render_frog_animation():
         frames.append(render_frog_sprite(FROG_IDLE))
 
     return frames
-
 
 def render_no_precip(interval_hours):
     """Render All Clear screen with animated frog."""
@@ -691,7 +717,6 @@ def render_no_precip(interval_hours):
         ),
     )
 
-
 def render_no_location():
     return render.Root(
         child = render.Column(
@@ -704,7 +729,6 @@ def render_no_location():
             ],
         ),
     )
-
 
 def render_error():
     return render.Root(
@@ -719,7 +743,6 @@ def render_error():
         ),
     )
 
-
 # ─── Icons ───
 
 def get_severity(precip_type, accum):
@@ -731,14 +754,12 @@ def get_severity(precip_type, accum):
             return 1
         else:
             return 2
+    elif accum < 0.25:
+        return 0
+    elif accum < 1:
+        return 1
     else:
-        if accum < 0.25:
-            return 0
-        elif accum < 1:
-            return 1
-        else:
-            return 2
-
+        return 2
 
 def get_severity_color(precip_type, severity):
     """Get color based on precip type and severity level."""
@@ -746,13 +767,11 @@ def get_severity_color(precip_type, severity):
         return SEVERITY_SNOW[severity]
     return SEVERITY_RAIN[severity]
 
-
 def get_icon(precip_type, severity):
     """Pick the right icon based on precip type and severity."""
     if precip_type == "snow":
         return [ICON_SNOW_LIGHT, ICON_SNOW_MEDIUM, ICON_SNOW_HEAVY][severity]
     return [ICON_RAIN_LIGHT, ICON_RAIN_MEDIUM, ICON_RAIN_HEAVY][severity]
-
 
 # ─── Formatting helpers ───
 
@@ -780,7 +799,6 @@ def format_duration(start_str, end_str):
         if remaining_hours > 0:
             return "%dd%dh" % (days, remaining_hours)
         return "%dd" % days
-
 
 def format_day_label(start_str, end_str, duration):
     """Format smart day label: Today/Tonight/Tomorrow/Wed or 'Thru 8pm' for NOW."""
@@ -812,25 +830,6 @@ def format_day_label(start_str, end_str, duration):
         # 2+ days out, use day abbreviation
         return start.format("Mon")
 
-
-def format_time_window(start_str, end_str):
-    start_parts = start_str.split("T")
-    end_parts = end_str.split("T")
-
-    start_date = start_parts[0]
-    start_hour = int(start_parts[1].split(":")[0])
-    end_date = end_parts[0]
-    end_hour = int(end_parts[1].split(":")[0])
-
-    start_day = get_day_abbr(start_date)
-    end_day = get_day_abbr(end_date)
-
-    start_fmt = "%s %s" % (start_day, format_hour(start_hour))
-    end_fmt = "%s %s" % (end_day, format_hour(end_hour))
-
-    return "%s-%s" % (start_fmt, end_fmt)
-
-
 def format_hour(h):
     if h == 0:
         return "12am"
@@ -841,11 +840,9 @@ def format_hour(h):
     else:
         return "%dpm" % (h - 12)
 
-
 def get_day_abbr(date_str):
     t = time.parse_time(date_str + "T00:00:00Z", format = "2006-01-02T15:04:05Z")
     return t.format("Mon")
-
 
 def format_snow_accum(total):
     if total < 0.5:
@@ -861,7 +858,6 @@ def format_snow_accum(total):
     else:
         return "12\"+"
 
-
 def format_rain_accum(total):
     if total < 0.1:
         return "Trace"
@@ -875,7 +871,6 @@ def format_rain_accum(total):
         whole = int(total)
         frac = int((total - whole) * 10)
         return "%d.%d\"" % (whole, frac)
-
 
 # ─── Schema ───
 
